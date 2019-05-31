@@ -58,7 +58,7 @@ function FileCreate(project, path)
     endif
 
     let l:objpath = "obj/" . l:ctx.project.name . "/"
-    let l:objpath = l:objpath . l:ctx.objpath "." . s:objSuffix
+    let l:objpath = l:objpath . l:ctx.objpath . "." . s:objSuffix
     let l:ctx.objpath = l:objpath
   else
     let l:ctx.objpath = ""
