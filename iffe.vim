@@ -217,6 +217,7 @@ function SourceBuild(ctx)
 
   if l:output != ""
     call Output(l:output)
+    throw "Build failure"
   endif
 
   call SourceUpdateDependencies(a:ctx)
@@ -375,6 +376,7 @@ function ProjectBuild(ctx)
 
     if l:output != ""
       call Output(l:output)
+      throw "Build failure"
     endif
   endif
 
@@ -624,10 +626,8 @@ endfunction
 "
 " Output a number of post build options and map them to buffer specific key
 " presses.
-"
-" ctx - The encapsulating system
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-function IffeOptions(ctx)
+function IffeOptions()
 
   call Output("-----------------")
   call Output("Press 'r' to rebuild")
@@ -643,15 +643,20 @@ endfunction
 " IffeMain
 "
 " Clear the buffer (in case it is a subsequent run), create the encapsulating
-" structure and start the main processes.
+" structure and start the main processes. We do not want errors to escape here
+" so everything in a try / catchall.
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function IffeMain()
 
-  execute("normal! ggdG")
-
-  let l:iffe = IffeCreate()
-  call IffeBuild(l:iffe)
-  call IffeOptions(l:iffe)
+  try
+    execute("normal! ggdG")
+    let l:iffe = IffeCreate()
+    call IffeBuild(l:iffe)
+  catch
+    call Output(v:exception)
+  finally
+    call IffeOptions()
+  endtry
 
 endfunction
 
