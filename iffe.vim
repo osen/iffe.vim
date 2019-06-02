@@ -1,9 +1,15 @@
 #!/usr/local/bin/vim -S
 
-" BSD / LLVM
-let s:compiler = "clang++"
+" Linux / GCC
+let s:compiler = "g++"
 let s:objSuffix = "o"
 let s:exeSuffix = ""
+let s:cflags = "-DSTD_SR1_DEBUG"
+
+" BSD / LLVM
+"let s:compiler = "clang++"
+"let s:objSuffix = "o"
+"let s:exeSuffix = ""
 
 " DOS / DJGPP
 "let s:compiler = "g++"
@@ -211,7 +217,7 @@ function SourceBuild(ctx)
     call mkdir("obj/" . a:ctx.project.name)
   endif
 
-  let l:cmd = s:compiler . " -c -o " . a:ctx.objpath . " -Isrc " . a:ctx.path
+  let l:cmd = s:compiler . " -c -o " . a:ctx.objpath . " " . s:cflags . " -Isrc " . a:ctx.path
   call Output(l:cmd)
   let l:output = system(l:cmd)
 
@@ -247,8 +253,8 @@ function ProjectCreate(iffe, path)
   let l:ctx.sources = []
   let l:ctx.headers = []
   let l:ctx.executable = 0
-  let l:files = globpath(l:ctx.path, '*')
-  let l:files = split(l:files, '\n')
+  let l:filesstr = globpath(l:ctx.path, '*')
+  let l:files = split(l:filesstr, '\n')
 
   for l:path in l:files
 
@@ -398,8 +404,8 @@ function IffePopulateProjects(ctx)
   let a:ctx.sources = []
   let a:ctx.headers = []
 
-  let l:files = globpath("src", '*')
-  let l:files = split(l:files, '\n')
+  let l:filesstr = globpath("src", '*')
+  let l:files = split(l:filesstr, '\n')
 
   for l:file in l:files
     if getftype(l:file) != "dir"

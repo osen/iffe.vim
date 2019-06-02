@@ -1,0 +1,49 @@
+#ifndef STD_SR1_ZERO_INITIALIZED
+#define STD_SR1_ZERO_INITIALIZED
+
+namespace std
+{
+
+namespace sr1
+{
+
+template<class T>
+class zero_initialized
+{
+private:
+  T m_data;
+
+public:
+  zero_initialized() : m_data(0) { }
+  zero_initialized(const T& t) : m_data(t) { }
+
+  T& operator=(const T& t)
+  {
+    m_data = t;
+    return m_data;
+  }
+
+  T& data() { return m_data; }
+
+  operator T&()
+  {
+    return m_data;
+  }
+
+  operator const T&() const
+  {
+    return m_data;
+  }
+
+  T& operator->()
+  {
+    return m_data;
+  }
+
+};
+
+}
+
+}
+
+#endif

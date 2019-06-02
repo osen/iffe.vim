@@ -1,0 +1,262 @@
+#ifndef STD_SR1_SHAREDPTR
+#define STD_SR1_SHAREDPTR
+
+#include "zero_initialized"
+#include "noncopyable"
+
+#include <iostream>
+
+#include <cstddef>
+#include <cstdlib>
+
+namespace std
+{
+
+namespace sr1
+{
+
+#ifdef STD_SR1_DEBUG
+
+struct shared_ptr_refcount
+{
+  zero_initialized<size_t> shared;
+  zero_initialized<size_t> weak;
+  zero_initialized<void *> ptr;
+  zero_initialized<void (*)(void *)> deleter;
+};
+
+template <typename T>
+void shared_ptr_deleter(void *ptr)
+{
+  T *t = static_cast<T *>(ptr);
+
+  delete t;
+}
+
+template <typename T>
+class shared_ptr;
+
+template <typename T>
+class shared_ptr_lock
+{
+public:
+  shared_ptr_lock(shared_ptr<T>* owner)
+  {
+    this->owner = owner;
+    owner->locks++;
+  }
+
+  virtual ~shared_ptr_lock()
+  {
+    owner->locks--;
+  }
+
+  shared_ptr_lock& operator=(const shared_ptr_lock& other)
+  {
+    if(owner) owner->locks--;
+    owner = other.owner;
+    owner->locks++;
+
+    return *this;
+  }
+
+  shared_ptr_lock(const shared_ptr_lock& other)
+  {
+    *this = other;
+  }
+
+protected:
+  zero_initialized<shared_ptr<T> *> owner;
+
+};
+
+template <typename T>
+class shared_ptr_lock_ptr : public shared_ptr_lock<T>
+{
+public:
+  shared_ptr_lock_ptr(shared_ptr<T> *owner) : shared_ptr_lock<T>(owner) { }
+
+  operator T*()
+  {
+    return this->owner->get();
+  }
+
+  T& operator*()
+  {
+    return *this->owner->get();
+  }
+
+  T* operator->()
+  {
+    return this->owner->get();
+  }
+
+};
+
+template <typename T>
+class shared_ptr_lock_ref : public shared_ptr_lock<T>
+{
+public:
+  shared_ptr_lock_ref(shared_ptr<T> *owner) : shared_ptr_lock<T>(owner) { }
+
+  operator T&()
+  {
+    return *this->owner->get();
+  }
+};
+
+template <typename T>
+class weak_ptr;
+
+template <typename T>
+shared_ptr<T> make_shared();
+
+template <typename T>
+class shared_ptr
+{
+  friend class shared_ptr_lock_ptr<T>;
+  friend class shared_ptr_lock_ref<T>;
+  friend class weak_ptr<T>;
+  friend class shared_ptr_lock<T>;
+  friend shared_ptr<T> make_shared<T>();
+
+public:
+  shared_ptr() { }
+
+  shared_ptr& operator=(const shared_ptr& other)
+  {
+    aquire(other.ref);
+
+    return *this;
+  }
+
+  shared_ptr(const shared_ptr& copy)
+  {
+    *this = copy;
+  }
+
+  template <typename U>
+  shared_ptr& operator=(const shared_ptr<U>& other)
+  {
+    T *t = static_cast<U*>(NULL);
+    aquire(other.ref);
+
+    return *this;
+  }
+
+  template <typename U>
+  shared_ptr(const shared_ptr<U>& copy)
+  {
+    *this = copy;
+  }
+
+  ~shared_ptr()
+  {
+    reset();
+  }
+
+  shared_ptr_lock_ptr<T> operator->()
+  {
+    return shared_ptr_lock_ptr<T>(this);
+  }
+
+  shared_ptr_lock_ref<T> operator*()
+  {
+    return shared_ptr_lock_ref<T>(this);
+  }
+
+  mutable zero_initialized<shared_ptr_refcount *> ref;
+
+private:
+  zero_initialized<size_t> locks;
+
+  T *get()
+  {
+    if(ref)
+    {
+      return static_cast<T *>(ref->ptr.data());
+    }
+
+    return NULL;
+  }
+
+  void reset()
+  {
+    if(!ref)
+    {
+      return;
+    }
+
+    if(locks)
+    {
+      std::cerr << "Attempt to release locked reference" << std::endl;
+      abort();
+    }
+
+    if(ref->shared == 1)
+    {
+      ref->deleter.data()(ref->ptr);
+      ref->ptr = NULL;
+
+      if(ref->weak < 1)
+      {
+        delete ref.data();
+      }
+    }
+    else
+    {
+      ref->shared--;
+    }
+
+    ref = NULL;
+  }
+
+  void aquire(shared_ptr_refcount *ref)
+  {
+    if(ref == this->ref)
+    {
+      return;
+    }
+
+    if(ref)
+    {
+      ref->shared++;
+    }
+
+    reset();
+
+    if(!ref)
+    {
+      return;
+    }
+
+    this->ref = ref;
+  }
+
+};
+
+template <typename T>
+shared_ptr<T> make_shared()
+{
+  shared_ptr<T> rtn;
+
+  shared_ptr_refcount *ref = new shared_ptr_refcount();
+  ref->ptr = new T();
+  ref->deleter = shared_ptr_deleter<T>;
+  rtn.aquire(ref);
+
+  return rtn;
+}
+
+#else
+
+using std::shared_ptr;
+using std::make_shared;
+
+#endif
+
+}
+
+}
+
+#endif
