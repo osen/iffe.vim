@@ -1,20 +1,32 @@
 #!/usr/local/bin/vim -S
 
+" POSIX / Emscripten
+"let s:compiler = "em++"
+"let s:objSuffix = "o"
+"let s:exeSuffix = "html"
+"let s:cflags = "-DSTD_SR1_DEBUG"
+"let s:lflags = "-s WASM=0"
+
 " Linux / GCC
-let s:compiler = "g++"
+"let s:compiler = "g++"
+"let s:objSuffix = "o"
+"let s:exeSuffix = ""
+"let s:cflags = "-DSTD_SR1_DEBUG"
+"let s:lflags = ""
+
+" BSD / LLVM
+let s:compiler = "clang++"
 let s:objSuffix = "o"
 let s:exeSuffix = ""
 let s:cflags = "-DSTD_SR1_DEBUG"
-
-" BSD / LLVM
-"let s:compiler = "clang++"
-"let s:objSuffix = "o"
-"let s:exeSuffix = ""
+let s:lflags = ""
 
 " DOS / DJGPP
 "let s:compiler = "g++"
 "let s:objSuffix = "o"
 "let s:exeSuffix = "exe"
+"let s:cflags = "-DSTD_SR1_DEBUG"
+"let s:lflags = ""
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Output
@@ -220,9 +232,13 @@ function SourceBuild(ctx)
   let l:cmd = s:compiler . " -c -o " . a:ctx.objpath . " " . s:cflags . " -Isrc " . a:ctx.path
   call Output(l:cmd)
   let l:output = system(l:cmd)
+  let l:ec = v:shell_error
 
   if l:output != ""
     call Output(l:output)
+  endif
+
+  if l:ec != 0
     throw "Build failure"
   endif
 
@@ -364,7 +380,7 @@ function ProjectBuild(ctx)
       call mkdir("bin")
     endif
 
-    let l:cmd = s:compiler . " -o " . a:ctx.outpath . " " . l:objstr
+    let l:cmd = s:compiler . " -o " . a:ctx.outpath . " " . l:objstr . " " . s:lflags
     call Output(l:cmd)
     let l:output = system(l:cmd)
 
@@ -379,9 +395,13 @@ function ProjectBuild(ctx)
     let l:cmd = "ar rcs " . a:ctx.outpath . " " . l:objstr
     call Output(l:cmd)
     let l:output = system(l:cmd)
+    let l:ec = v:shell_error
 
     if l:output != ""
       call Output(l:output)
+    endif
+
+    if l:ec != 0
       throw "Build failure"
     endif
   endif
